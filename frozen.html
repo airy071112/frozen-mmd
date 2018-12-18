@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+	<title>Frozen - Let it Go</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<meta content="yes" name="apple-mobile-web-app-capable">     
+	<meta content="black" name="apple-mobile-web-app-status-bar-style">     
+	<meta content="telephone=no" name="format-detection">
+
+	<link rel="stylesheet" type="text/css" href="css/progress-bar.css">
+	<style>
+		body {
+			font-family: Monospace;
+			background-color: #fff;
+			color: #000;
+			margin: 0px;
+			overflow: hidden;
+		}
+
+		#info {
+			color: #0f0;
+			position: absolute;
+			bottom: 50px;
+			right: 50px;
+			width: 30%;
+			text-align: left;
+			display: block;
+		}
+
+		#info a,
+		.button {
+			color: #f00;
+			font-weight: bold;
+			text-decoration: underline;
+			cursor: pointer
+		}
+
+		.overlay {
+			position: absolute;
+			top: 0px;
+			left: 0px;
+			z-index: 10001;
+			display: none;
+			filter: alpha(opacity=60);
+			background-color: #777;
+			opacity: 0.5;
+			-moz-opacity: 0.5;
+		}
+
+		.loading-tip {
+			z-index: 10002;
+			position: fixed;
+			display: none;
+		}
+
+		.loading-tip img {
+			width: 100px;
+			height: 100px;
+		}
+
+		p {
+
+			text-align: center;
+
+			color: #fafafa;
+
+			text-shadow: 0 1px 0 #111;        
+
+			}
+	</style>
+</head>
+
+<body>
+
+	<div id="overlay" class="overlay">
+
+	</div>
+	<div id="loadingTip" class="loading-tip">
+		<div class="progress-bar blue stripes">
+
+			<span id="progress-bar" style="width: 0%"></span>
+
+		</div>
+		<p id="progress-tip">
+			Loading:
+		</p>
+	</div>
+
+
+
+	<table id="info" style="display:none">
+
+		<tr>
+			<td>time:</td>
+			<td id="time"></td>
+		</tr>
+		<tr>
+			<td>position:</td>
+			<td id="position"></td>
+		</tr>
+		<tr>
+			<td>rotation:</td>
+			<td id="rotation"></td>
+		</tr>
+		<tr>
+			<td>rots:</td>
+			<td id="rots"></td>
+		</tr>
+		<tr>
+			<td>target:</td>
+			<td id="target"></td>
+		</tr>
+		<tr>
+			<td>distance:</td>
+			<td id="distance"></td>
+		</tr>
+	</table>
+	<!-- <script src="../build/three.js"></script>
+
+		<script src="js/libs/mmdparser.min.js"></script>
+        <script src="js/libs/ammo.js"></script> -->
+
+	<script src='build/three.min.js'></script>
+	<script src="js/libs/mmdparser.min.js"></script>
+	<script src="js/libs/ammo.js"></script>
+
+	<script src="js/loaders/XLoader.js"></script>
+	<script src="js/loaders/TGALoader.js"></script>
+	<script src="js/loaders/MMDLoader.js"></script>
+	<script src="js/effects/OutlineEffect.js"></script>
+	<script src="js/animation/CCDIKSolver.js"></script>
+	<script src="js/animation/MMDPhysics.js"></script>
+	<script src="js/animation/MMDAnimationHelper.js"></script>
+	<script src="js/objects/Water.js"></script>
+
+	<script src="js/controls/OrbitControls.js"></script>
+
+	<script src="js/libs/stats.min.js"></script>
+	<script src="js/libs/dat.gui.min.js"></script>
+	<script src="js/libs/jquery-1.11.3.min.js"></script>
+
+
+	<script>
+
+		document.body.addEventListener('touchmove', function (e) {
+			e.preventDefault(); 
+		}, {passive: false});
+
+		var container, stats;
+		var loader;
+		var camera, scene, renderer, effect, group;
+		var helper, ikHelper, physicsHelper;
+
+		var cameraTarget;
+
+		var ambient, directionalLight;
+
+		var windowHalfX = window.innerWidth / 2;
+		var windowHalfY = window.innerHeight / 2;
+
+		var clock = new THREE.Clock();
+
+		var animation;
+		var objects;
+
+		var meshes = [];
+		var allMeshes = [];
+
+		var autoCamera;
+
+		var apiParams;
+
+		var axes, gridHelper, cameraTarget;
+
+
+		var ready = false;
+
+		init();
+
+		function init() {
+			showLoading();
+			container = document.createElement('div');
+			document.body.appendChild(container);
+
+			camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100000);
+			camera.position.z = 0;
+			// scene
+
+			scene = new THREE.Scene();
+
+			axes = new THREE.AxesHelper(65);
+			//axes.position.y = 8;
+			scene.add(axes);
+
+			gridHelper = new THREE.GridHelper(100, 20);
+			//gridHelper.position.y = - 10;
+			scene.add(gridHelper);
+
+			axes.visible = false;
+			gridHelper.visible = false;
+
+			var cameraTargetGeometry = new THREE.SphereBufferGeometry(0.2, 4, 4);
+
+			var cameraTargetMaterial = new THREE.MeshBasicMaterial({
+				color: new THREE.Color(0xff0000),
+				// depthTest: false,
+				// depthWrite: false,
+				// transparent: true
+			});
+
+			cameraTarget = new THREE.Mesh(cameraTargetGeometry, cameraTargetMaterial);
+			scene.add(cameraTarget);
+			var cameraAxes = new THREE.AxesHelper(15);
+			cameraTarget.add(cameraAxes);
+
+			cameraTarget.visible = false;
+
+
+			ambient = new THREE.AmbientLight(0x70707C);
+			scene.add(ambient);
+
+			directionalLight = new THREE.DirectionalLight(0x50505C);
+			directionalLight.position.set(0.2, 0.2, 1).normalize();
+			scene.add(directionalLight);
+
+			//
+
+			renderer = new THREE.WebGLRenderer({ antialias: true });
+			renderer.setPixelRatio(window.devicePixelRatio);
+			renderer.setSize(window.innerWidth, window.innerHeight);
+			container.appendChild(renderer.domElement);
+
+			effect = new THREE.OutlineEffect(renderer);
+			effect.enabled = false;
+			// STATS
+			var manager = new THREE.LoadingManager();
+
+
+			function loadXFile(callback) {
+				
+				function makeLambertMaterial(materials) {
+
+					var array = [];
+
+					materials.forEach(m => {
+						var lam = new THREE.MeshLambertMaterial();
+						lam.copy(m);
+						lam.map.wrapS = THREE.RepeatWrapping;
+						lam.map.wrapT = THREE.RepeatWrapping;
+						array.push(lam);
+					})
+					//array[0].specularMap = array[0].map;
+					array[1].emissiveMap = array[1].map;
+
+					return array;
+
+				}
+
+				var xloader = new THREE.XLoader(manager);
+				currentLoadName = '地形数据1';
+				//$('#progress-bar').css('width', '0%');
+				xloader.load(['frozen/x_MME/ground1.x'], function (object) {
+					index ++;
+					
+					//$('#progress-bar').css('width', index/16 * 100+'%');
+
+					for (var i = 0; i < object.models.length; i++) {
+						var model = object.models[i];
+						model.scale.set(-10, 10, 10);
+						model.quaternion.set(0, 1, 0, 0);
+
+						model.material = makeLambertMaterial(model.material);
+
+						meshes[1].skeleton.bones[1].add(model);
+						//scene.add(model);
+					}
+
+					object = null;
+					xloader = new THREE.XLoader(manager);
+
+					currentLoadName = '地形数据2';
+					//$('#progress-bar').css('width', '0%');
+					xloader.load(['frozen/x_MME/ground2.x'], function (object) {
+						index ++;
+						
+						//$('#progress-bar').css('width', index/16 * 100+'%');
+
+						for (var i = 0; i < object.models.length; i++) {
+							var model = object.models[i];
+							model.scale.set(-10, 10, 10);
+							model.quaternion.set(0, 1, 0, 0);
+
+							model.material = makeLambertMaterial(model.material);
+
+							meshes[1].skeleton.bones[2].add(model);
+						}
+
+
+						var iceGeo = new THREE.CircleBufferGeometry(90, 64);
+
+						var ice = new THREE.Water(iceGeo, {
+							//clipBias: 0.003,
+							distortionScale: 1,
+							waterColor: new THREE.Color(1, 0, 0.2),
+							alpha: 0.4
+						})
+
+						ice.rotateX(-Math.PI / 2);
+
+						meshes[5].skeleton.bones[1].add(ice);
+
+						callback();
+
+					});
+
+				});
+			}
+
+
+
+			// model
+
+			function onProgress(xhr) {
+
+				if (xhr.lengthComputable) {
+					
+					var percentComplete = xhr.loaded / xhr.total * 100;
+					console.log(Math.round(percentComplete, 2) + '% downloaded');
+
+					var process = index/16 * 100;
+					//if(percentComplete < 100){
+
+						process += percentComplete/16;
+					//}
+		
+					$('#progress-bar').css('width', process+'%');
+					$('#progress-tip').text(`(${index+1}/16), 加载${currentLoadName}. ${Math.round(percentComplete, 2)} %...`);
+				}
+
+			};
+
+			function onError(xhr) {
+			};
+
+			var modelFile = [
+				'frozen/pmx/01_dome.pmx',
+				'frozen/pmx/02_dummy.pmx',
+				'frozen/pmx/03_snowman.pmx',
+				'frozen/pmx/04_ice.pmx',
+				'frozen/pmx/05_door.pmx',
+				'frozen/pmx/06_castle.pmx',
+				'frozen/pmx/07_exterior.pmx',
+				'frozen/pmx/08_chandelier.pmx',
+				'frozen/pmx/09_light.pmx',
+				'frozen/pmx/10_crystal.pmx',
+				'models/Miku_lace_dress/TDA Miku Lace Dress Blue Ver2.0.pmx',
+				//'frozen/roles/TDA miku/Tda Hatsune Miku Magnet Good Physics.pmx',
+				//'frozen/roles/Elsa/Elsa.pmx',
+				'frozen/pmx/11_stair.pmx'
+			];
+
+
+			var vmdFiles = [
+				['frozen/vmd/01_dome.vmd'],
+				['frozen/vmd/02_dummy.vmd'],
+				['frozen/vmd/03_snowman.vmd'],
+				['frozen/vmd/04_ice.vmd'],
+				['frozen/vmd/05_door.vmd'],
+				['frozen/vmd/06_castle.vmd'],
+				['frozen/vmd/07_exterior.vmd'],
+				['frozen/vmd/08_chandelier.vmd'],
+				['frozen/vmd/09_light.vmd'],
+				['frozen/vmd/10_crystal.vmd'],
+				['frozen/Let_it_go/Let it go-motion.vmd'],
+				['frozen/vmd/11_stair.vmd']
+			];
+
+
+			var cameraFiles = ['frozen/Let_it_go/Let it go-camera.vmd', 'frozen/vmd/AdditionalCamera.vmd'];
+			var audioFile = 'frozen/Let_it_go/let_it_go.mp3';
+			var audioParams = {};
+
+
+			loader = new THREE.MMDLoader();
+			helper = new THREE.MMDAnimationHelper({
+				//loopMode: THREE.LoopOnce
+				//afterglow: 2.0
+				//delayTime: 0
+			});
+
+
+			function makePhongMaterials(materials) {
+
+				//同步纹理的透明参数
+				function _checkImageTransparency(material) {
+					var map = material.map;
+
+					if (map.readyCallbacks) {
+						map.readyCallbacks.push(function (map) {
+							material.transparent = material.transparent || (map.transparent === true);
+						})
+					} else {
+						material.transparent = material.transparent || (map.transparent === true);
+					}
+
+				}
+
+				var array = [];
+
+				for (var i = 0, il = materials.length; i < il; i++) {
+
+					var m = new THREE.MeshPhongMaterial();
+					m.copy(materials[i]);
+
+					if (m.map && !m.transparent)
+						_checkImageTransparency(m);
+
+					m.needsUpdate = true;
+
+					array.push(m);
+
+				}
+
+				return array;
+			}
+
+			//var index = Math.floor(Math.random()*modelFile.length);
+			function loadModel(modelFile, vmdFiles, onload, onProgress, onError) {
+				loader.loadWithAnimation(modelFile, vmdFiles, function (mmd) {
+					index++;
+
+					//$('#progress-bar').css('width', index/16 * 100+'%');
+					var mesh = mmd.mesh;
+
+					mesh.toonMaterial = mesh.material;
+					mesh.phongMaterial = makePhongMaterials(mesh.material);
+					mesh.material = mesh.phongMaterial;
+
+					helper.add(mesh, {
+						animation: mmd.animation,
+						physics: true
+					});
+
+					allMeshes.push(mesh);
+					meshes.push(mesh);
+					//scene.add(mesh);
+
+					if (onload) {
+						onload(mesh)
+					}
+
+					//helper.enable( 'physics', false );
+				}, onProgress, onError)
+			}
+
+			var index = 0;
+
+			var currentLoadName = '';
+
+			function loadModelLoop() {
+				//helper.enable( 'physics', false);
+				helper.enable('ik', true);
+
+				loader.onBeforeBuildAnimation = function (url, vmd) {
+					//console.warn(url, vmd);
+					if (url == 'frozen/Let_it_go/Let it go-motion.vmd') {
+						var motion = vmd.motions[7365];
+
+						if (motion.boneName === '右足ＩＫ' && motion.frameNum === 4077) {
+							console.warn('修复motion,', motion);
+							motion.position = [0.14, 6.27, 1.55];
+						}
+
+						motion = vmd.motions[7364];
+
+						if (motion.boneName === '右足ＩＫ' && motion.frameNum === 4087) {
+							console.warn('修复motion,', motion);
+							motion.position = [2.05, 4.85, 0.61];
+						}
+					}
+				}
+
+				if (index < modelFile.length) {
+					console.log('load mdoel: ', modelFile[index], vmdFiles[index]);
+					var modelfilepaths = modelFile[index].split('/');
+					currentLoadName = '模型数据: '+ modelfilepaths[modelfilepaths.length-1];
+					//$('#progress-bar').css('width', '0%');
+					loadModel(modelFile[index], vmdFiles[index], loadModelLoop, onProgress, onError);
+				} else {
+					
+					loadXFile(function () {
+						currentLoadName = '镜头数据';
+						autoCamera = new THREE.PerspectiveCamera(1, window.innerWidth / window.innerHeight, 1, 1);
+						loader.loadAnimation(cameraFiles, autoCamera, function (cameraAnimation) {
+							index ++;
+							
+							//$('#progress-bar').css('width', index/16 * 100+'%');
+							helper.add(autoCamera, {
+								animation: cameraAnimation
+							});
+
+							currentLoadName = '音频数据: Let_it_go.mp3';
+							new THREE.AudioLoader().load(audioFile, function (buffer) {
+								index ++;
+								var listener = new THREE.AudioListener();
+								var audio = new THREE.Audio(listener).setBuffer(buffer);
+								listener.position.z = 1;
+								helper.add(audio, audioParams);
+								scene.add(audio);
+								scene.add(listener);
+								//scene.add( mesh );
+								meshes.forEach(mesh => {
+									mesh.frustumCulled = false;
+									scene.add(mesh);
+
+									//var physicsHelper = helper.objects.get( mesh ).physics.createHelper();
+
+									//scene.add( physicsHelper );
+								})
+
+								// 更新IK绑定骨
+								helper.onBeforePhysics = function (mesh) {
+									if (mesh.name == meshes[10].name) {
+										mesh.skeleton.bones.filter(b => { return b.name.slice(-1) === "D" }).forEach(b => {
+											//console.log(b);
+											var bonename = b.name.slice(0, -1);
+											//console.log(bonename);
+											var bone = mesh.skeleton.bones.find(b => { return b.name == bonename })
+											b.position.copy(bone.position);
+											b.quaternion.copy(bone.quaternion);
+										})
+										mesh.updateMatrixWorld(true);
+									}
+
+								}
+
+								allStart();
+
+
+
+							}, onProgress, null);
+						}, onProgress, null);
+					})
+
+				}
+			}
+
+			loadModelLoop();
+
+			var controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+			window.addEventListener('resize', onWindowResize, false);
+
+		}
+
+		var showFrame = [
+			[0, Infinity],   	//01_dome
+			[0, Infinity],   	//02_dummy
+			[1904, 1983],		//03_snowman
+			[4410, Infinity],		//04_ice
+			[0, Infinity],		//05_door
+			[4410, Infinity],		//06_castle
+			[5765, Infinity],		//07_exterior
+			[0, Infinity],		//08_chandeiler
+			[4089, Infinity],		//09_crystal_light
+			[0, Infinity],		//10_crystal
+			[0, Infinity],		//miku
+			[3282, 4409]		//11_stairs
+		]
+
+		function getPlayTime() {
+			return helper.audioManager == null ? 0 : helper.audioManager.currentTime;
+		}
+
+		function shouldShow(mesh, showFrame) {
+			var objects = helper.objects.get(mesh);
+			var time = objects.mixer.time;
+
+			//console.log(time);
+			return (getPlayTime() * 30 >= showFrame[0]) && (getPlayTime() * 30 <= showFrame[1])
+		}
+
+
+
+		function initGui() {
+
+			dat.GUI.TEXT_CLOSED = '关闭控制器';
+			dat.GUI.TEXT_OPEN = '打开控制器';
+
+			apiParams = {
+				animationPause: false,
+				autoCamera: true,
+				ambientLight: "#c8b8b8",
+				directionalLight: "#50505C",
+				phong: true,
+				debug: false
+			}
+			var gui = new dat.GUI();
+
+			gui.add(apiParams, 'animationPause').name('暂停').onChange(function (pause) {
+				helper.enable('animation', !pause);
+				helper.enable('cameraAnimation', !pause);
+			});
+
+			gui.add(apiParams, 'autoCamera').name('自动镜头').onChange(function () {
+				//helper.enable( 'cameraAnimation', apiParams[ 'animation' ] && apiParams[ 'cameraAnimation' ] );
+			});
+
+			gui.add(apiParams, "phong").name('感光材质').onChange(function (e) {
+
+				meshes[10].material = e ? meshes[10].phongMaterial : meshes[10].toonMaterial;
+
+			});
+
+			gui.add(apiParams, "debug").name('debug').onChange(function (e) {
+
+				showDebugInfo( e )
+			});
+
+		}
+
+		function showDebugInfo( show ){
+			axes.visible = show;
+			gridHelper.visible = show;
+			cameraTarget.visible = show;
+
+			show? $('#info').show(): $('#info').hide();
+		}
+
+		function onWindowResize() {
+
+			windowHalfX = window.innerWidth / 2;
+			windowHalfY = window.innerHeight / 2;
+
+			camera.aspect = window.innerWidth / window.innerHeight;
+			camera.updateProjectionMatrix();
+
+			effect.setSize(window.innerWidth, window.innerHeight);
+
+		}
+
+		//
+
+		function toDegree(v) {
+			return (v * 180 / Math.PI).toFixed(3);
+		}
+
+		function animate() {
+
+			requestAnimationFrame(animate);
+
+			document.getElementById('time').innerText = `${getPlayTime().toFixed(3)}`;
+			document.getElementById('position').innerText = `${camera.position.x.toFixed(3)}, ${camera.position.y.toFixed(3)}, ${camera.position.z.toFixed(3)}`;
+			document.getElementById('rotation').innerText = `${toDegree(camera.rotation.x)}, ${toDegree(camera.rotation.y)}, ${toDegree(camera.rotation.z)}`;
+			document.getElementById('rots').innerText = `${toDegree(helper.cameraTarget.rotsX)}, ${toDegree(helper.cameraTarget.rotsY)}, ${toDegree(helper.cameraTarget.rotsZ)}`;
+			document.getElementById('target').innerText = `${helper.cameraTarget.position.x.toFixed(3)}, ${helper.cameraTarget.position.y.toFixed(3)}, ${helper.cameraTarget.position.z.toFixed(3)}`;
+			document.getElementById('distance').innerText = `${helper.cameraTarget.position.distanceTo(camera.position)}`;
+
+			cameraTarget.position.copy(helper.cameraTarget.position);
+			cameraTarget.quaternion.copy(helper.cameraTarget.quaternion);
+
+			if (autoCamera && apiParams['autoCamera']) {
+				camera.position.copy(autoCamera.position);
+				camera.quaternion.copy(autoCamera.quaternion);
+			}
+
+
+
+			stats.begin();
+			render();
+			stats.end();
+
+		}
+
+		var physics = false;
+		function startPhysics() {
+			helper.enable('physics', true);
+			physics = true;
+		}
+
+		function render() {
+			if (ready) {
+				meshes.forEach((m, i) => {
+					m.visible = shouldShow(m, showFrame[i]);
+				})
+				var delta = clock.getDelta();
+				helper.update(delta);
+			}
+			effect.render(scene, camera);
+		}
+
+
+		function allStart() {
+			hideLoading();
+			ready = true;
+			stats = new Stats();
+			container.appendChild(stats.dom);
+			initGui();
+			animate();
+		}
+
+
+
+		function getWindowInnerHeight() {
+			var winHeight = window.innerHeight
+				|| (document.documentElement && document.documentElement.clientHeight)
+				|| (document.body && document.body.clientHeight);
+			return winHeight;
+
+		}
+
+		function getWindowInnerWidth() {
+			var winWidth = window.innerWidth
+				|| (document.documentElement && document.documentElement.clientWidth)
+				|| (document.body && document.body.clientWidth);
+			return winWidth;
+
+		}
+
+		function showOverlay() {
+			$('.overlay').css({ 'height': $(document).height(), 'width': $(document).width() });
+			$('.overlay').show();
+		}
+
+
+		function showLoading() {
+
+			showOverlay();
+
+			$("#loadingTip").css('top',
+				(getWindowInnerHeight() - $("#loadingTip").height()) / 2 + 'px');
+			$("#loadingTip").css('left',
+				(getWindowInnerWidth() - $("#loadingTip").width()) / 2 + 'px');
+
+			$("#loadingTip").show();
+			$(document).scroll(function () {
+				return false;
+			});
+		}
+
+		function hideLoading() {
+			$('.overlay').hide();
+			$("#loadingTip").hide();
+			$(document).scroll(function () {
+				return true;
+			});
+		}
+
+	</script>
+
+</body>
+
+</html>
