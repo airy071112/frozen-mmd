@@ -420,6 +420,8 @@ THREE.MMDLoader = ( function () {
 		 */
 		build: function ( data ) {
 
+			console.log(data);
+
 			// for geometry
 			var positions = [];
 			var uvs = [];
@@ -723,7 +725,7 @@ THREE.MMDLoader = ( function () {
 					morphTargets.push( params );
 					morphPositions.push( attribute );
 				}else if( override ){
-					orphTargets[existIndex] = params;
+					morphTargets[existIndex] = params;
 					morphPosition[existIndex] = attribute;
 				}	
 
@@ -841,11 +843,11 @@ THREE.MMDLoader = ( function () {
 							//params.name = morph2.name;
 							if ( morph2.type === 1 ) {
 
-								updatePosition( morph2, ratio );
+								updatePosition( morph2, ratio, true );
 								
 							} else if ( morph2.type === 3 ) {
 
-								updateUV( morph2, ratio );
+								updateUV( morph2, ratio, true );
 								//morphTargets.push( params );
 							}
 
@@ -859,7 +861,7 @@ THREE.MMDLoader = ( function () {
 						
 					}if ( morph.type === 1 ) { // vertex
 
-						updatePosition( morph, 1.0 , true);
+						updatePosition( morph, 1.0 );
 						//morphTargets.push( params );
 
 					} else if ( morph.type === 2 ) { // bone
@@ -868,7 +870,7 @@ THREE.MMDLoader = ( function () {
 
 					} else if ( morph.type === 3 ) { // uv
 
-						updateUV( morph, 1.0 , true);
+						updateUV( morph, 1.0 );
 						//morphTargets.push( params );
 
 					} else if ( morph.type === 4 ) { // additional uv1
@@ -1705,7 +1707,7 @@ THREE.MMDLoader = ( function () {
 				tracks.push( this._createTrack( targetName + '.quaternion', THREE.QuaternionKeyframeTrack, times, rotations, rInterpolations ) );
 
 			}
-
+			//console.warn(tracks);
 			return new THREE.AnimationClip( '', - 1, tracks );
 
 		},
@@ -1716,6 +1718,9 @@ THREE.MMDLoader = ( function () {
 		 * @return {THREE.AnimationClip}
 		 */
 		buildMorphAnimation: function ( vmd, mesh ) {
+			console.warn(vmd);
+			console.warn(mesh);
+
 			mesh.morphWeights = mesh.morphWeights || {};
 			
 			var tracks = [];
@@ -1759,15 +1764,15 @@ THREE.MMDLoader = ( function () {
 					for ( var j = 0; j < morphData.elementCount; j ++ ) {
 
 						var morphData2 = mesh.geometry.userData.MMD.morphs[ morphData.elements[ j ].index ];
-
-						collectMorph( morph, morphData2 );
+						
+						morphData2 && collectMorph( morph, morphData2);
 
 					}
 				} else {
 
 					morphs[ morphData.name ] = morphs[ morphData.name ] || { type: morphData.type, array: [] };
 
-					collectMorph( morph, morphData, true);
+					collectMorph( morph, morphData , true);
 				}			
 
 			}
@@ -1794,7 +1799,7 @@ THREE.MMDLoader = ( function () {
 
 				var type = morphs[ key ].type;
 
-				if ( type === 1 ){
+				if ( mesh.geometry.userData.MMD.format === 'pmd'  || type === 1 ){
 					
 					tracks.push( new THREE.NumberKeyframeTrack( '.morphTargetInfluences[' + morphTargetDictionary[ key ] + ']', times, values ) );
 				} else {
@@ -1807,6 +1812,7 @@ THREE.MMDLoader = ( function () {
 
 			}
 
+			
 			return new THREE.AnimationClip( '', - 1, tracks );
 
 		},

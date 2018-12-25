@@ -514,7 +514,7 @@ THREE.MMDAnimationHelper = ( function () {
 
 				var masterPhysics = this._getMasterPhysics();
 
-				if ( masterPhysics !== null ) world = masterPhysics.world;
+				if ( masterPhysics !== null ) params.world = masterPhysics.world;
 
 			}
 
@@ -640,10 +640,6 @@ THREE.MMDAnimationHelper = ( function () {
 				mixer.update( delta );
 
 				camera.updateProjectionMatrix();
-
-				if(isNaN(this.cameraTarget.rotsX)){
-					console.error(this.cameraTarget);
-				}
 
 				this.cameraTarget.quaternion.set(0, 0, 0, 1);
 				
@@ -933,7 +929,9 @@ THREE.MMDAnimationHelper = ( function () {
 
 			for ( var i = 0, il = this.meshes.length; i < il; i ++ ) {
 
-				var physics = this.meshes[ i ].physics;
+				//var physics = this.meshes[ i ].physics;
+
+				var physics = this.objects.get( this.meshes[ i ] ).physics;
 
 				if ( physics !== undefined && physics !== null ) {
 
@@ -958,25 +956,25 @@ THREE.MMDAnimationHelper = ( function () {
 
 			for ( var i = 0, il = this.meshes.length; i < il; i ++ ) {
 
-				var p = this.meshes[ i ].physics;
+				var p = this.objects.get( meshes[ i ] ).physics;
 
 				if ( p !== null && p !== undefined ) {
-
-					p.updateRigidBodies();
+					
+					p._updateRigidBodies();
 
 				}
 
 			}
 
-			physics.stepSimulation( delta );
+			physics._stepSimulation( delta );
 
 			for ( var i = 0, il = this.meshes.length; i < il; i ++ ) {
 
-				var p = this.meshes[ i ].physics;
+				var p = this.objects.get( meshes[ i ] ).physics;
 
 				if ( p !== null && p !== undefined ) {
-
-					p.updateBones();
+					
+					p._updateBones();
 
 				}
 

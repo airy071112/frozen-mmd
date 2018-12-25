@@ -307,7 +307,7 @@ THREE.MMDPhysics = ( function () {
 
 			}
 
-			this.world.stepSimulation( stepTime, maxStepNum, unitStep );
+			this.world.stepSimulation( stepTime, 1, unitStep );
 
 		},
 
@@ -962,19 +962,19 @@ THREE.MMDPhysics = ( function () {
 			body.setDamping( params.positionDamping, params.rotationDamping );
 			body.setSleepingThresholds( 0, 0 );
 
-			var motionThreshold = params.width / 2;
-			switch( params.shapeType ) {
+			// var motionThreshold = params.width / 2;
+			// switch( params.shapeType ) {
 
-				case 1:
-					motionThreshold = Math.min( params.width, params.height, params.depth) / 2;
+			// 	case 1:
+			// 		motionThreshold = Math.min( params.width, params.height, params.depth) / 2;
 
-				case 2:
-					motionThreshold = Math.min( params.width, params.height) / 2;
+			// 	case 2:
+			// 		motionThreshold = Math.min( params.width, params.height) / 2;
 
-				default:
-					motionThreshold = params.width / 2;
+			// 	default:
+			// 		motionThreshold = params.width / 2;
 
-			}
+			// }
 
 			//motionThreshold = 0.00001;
 
