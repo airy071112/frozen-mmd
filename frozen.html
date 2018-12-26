@@ -137,7 +137,7 @@
 	<script src="js/animation/CCDIKSolver.js"></script>
 	<script src="js/animation/MMDPhysics.js"></script>
 	<script src="js/animation/MMDAnimationHelper.js"></script>
-	<script src="js/objects/Water.js"></script>
+	<script src="js/objects/Ice.js"></script>
 
 	<script src="js/controls/OrbitControls.js"></script>
 
@@ -306,14 +306,22 @@
 
 						var iceGeo = new THREE.CircleBufferGeometry(90, 64);
 
-						var ice = new THREE.Water(iceGeo, {
+						var ice = new THREE.Ice(iceGeo, {
 							//clipBias: 0.003,
-							distortionScale: 1,
-							waterColor: new THREE.Color(1, 0, 0.2),
-							alpha: 0.4
+							//distortionScale: 1,
+							//waterColor: new THREE.Color(1, 0, 0.2),
+							alpha: 0.6
 						})
 
 						ice.rotateX(-Math.PI / 2);
+
+						ice.position.y = 0.005;
+
+						ice.renderOrder = 9999;
+
+						//ice.position.copy(meshes[5].skeleton.bones[1].position)
+
+						//scene.add(ice);
 
 						meshes[5].skeleton.bones[1].add(ice);
 
@@ -518,7 +526,7 @@
 								listener.position.z = 1;
 								
 								audio.onEnded = function(){
-									ready = false;
+									stop();
 								}
 								//scene.add( mesh );
 								meshes.forEach(mesh => {
@@ -553,7 +561,7 @@
 
 								}
 
-								allStart();
+								allPrepared();
 
 
 
@@ -717,7 +725,7 @@
 		}
 
 
-		function allStart() {
+		function allPrepared() {
 			
 			$("#progress-tip").text("加载完成");
 			$("#start_btn").show();
@@ -730,12 +738,23 @@
 			container.appendChild(stats.dom);
 			initGui();
 
-			//helper.update(95);
+			renderer.render(scene, camera);
 			ready = true;
-
+			//helper.update(150);
 			animate();
-		}) 
+		})
 
+		function start(){
+			clock.start();
+			helper.objects.get(meshes[10]).physics.reset();
+			helper.enable('physics', true);
+		}
+
+		function stop(){
+			
+			clock.stop();
+			helper.enable('physics', false);
+		}
 
 
 		function getWindowInnerHeight() {
