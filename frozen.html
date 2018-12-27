@@ -51,6 +51,7 @@
 
 		.loading-tip {
 			z-index: 10002;
+			width: 360px;
 			position: fixed;
 			display: none;
 		}
@@ -68,7 +69,26 @@
 
 			text-shadow: 0 1px 0 #111;        
 
-			}
+		}
+
+
+		.start-button {
+			width: 270px;
+			height: 40px; 
+			border-width: 0px;
+			border-radius: 3px; 
+			background: #1E90FF; 
+			cursor: pointer; 
+			outline: none; 
+			font-family: Microsoft YaHei;
+			color: white;
+			font-size: 17px;
+		}
+		.start-button:hover {
+			background: #5599FF;
+
+		}
+
 	</style>
 </head>
 
@@ -80,47 +100,76 @@
 
 	<div id="loadingTip" class="loading-tip">
 
-		<div class="progress-bar blue stripes">
+		<div id="progress-bar-div">
+			<div class="progress-bar blue stripes">
 
-			<span id="progress-bar" style="width: 0%"></span>
-
+				<span id="progress-bar" style="width: 0%"></span>
+	
+			</div>
+			<p id="progress-tip">
+				Loading:
+			</p>
 		</div>
-		<p id="progress-tip">
-			Loading:
-		</p>
+		
 
-		<p><button id="start_btn" style="display: none">开始</button></p>
+		<p><button id="start_btn" class="start-button" style="display: none">开始</button></p>
 
 	</div>
 
-
-	<table id="info" style="display:none">
-
-		<tr>
-			<td>time:</td>
-			<td id="time"></td>
-		</tr>
-		<tr>
-			<td>position:</td>
-			<td id="position"></td>
-		</tr>
-		<tr>
-			<td>rotation:</td>
-			<td id="rotation"></td>
-		</tr>
-		<tr>
-			<td>rots:</td>
-			<td id="rots"></td>
-		</tr>
-		<tr>
-			<td>target:</td>
-			<td id="target"></td>
-		</tr>
-		<tr>
-			<td>distance:</td>
-			<td id="distance"></td>
-		</tr>
-	</table>
+	<div id="info" style="display:none">
+		<!-- <table >
+			<tr>
+				<td>time:</td>
+				<td id="time"></td>
+			</tr>
+			<tr>
+				<td>position:</td>
+				<td id="position"></td>
+			</tr>
+			<tr>
+				<td>rotation:</td>
+				<td id="rotation"></td>
+			</tr>
+			<tr>
+				<td>rots:</td>
+				<td id="rots"></td>
+			</tr>
+			<tr>
+				<td>target:</td>
+				<td id="target"></td>
+			</tr>
+			<tr>
+				<td>distance:</td>
+				<td id="distance"></td>
+			</tr>
+		</table> -->
+		<table >
+			<tr>
+				<td>time:</td>
+				<td id="time"></td>
+			</tr>
+			<tr>
+				<td>position:</td>
+				<td id="position"></td>
+			</tr>
+			<tr>
+				<td>rotation:</td>
+				<td id="rotation"></td>
+			</tr>
+			<tr>
+				<td>rots:</td>
+				<td id="rots"></td>
+			</tr>
+			<tr>
+				<td>target:</td>
+				<td id="target"></td>
+			</tr>
+			<tr>
+				<td>distance:</td>
+				<td id="distance"></td>
+			</tr>
+		</table>
+	</div>
 	<!-- <script src="../build/three.js"></script>
 
 		<script src="js/libs/mmdparser.min.js"></script>
@@ -139,6 +188,8 @@
 	<script src="js/animation/MMDAnimationHelper.js"></script>
 	<script src="js/objects/Ice.js"></script>
 
+	<script src="js/WebGL.js"></script>
+
 	<script src="js/controls/OrbitControls.js"></script>
 
 	<script src="js/Detector.js"></script>
@@ -146,12 +197,26 @@
 	<script src="js/libs/dat.gui.min.js"></script>
 	<script src="js/libs/jquery-1.11.3.min.js"></script>
 
+	<!-- <script src="//cdn.jsdelivr.net/npm/eruda"></script> -->
+
+
 
 	<script>
+
+		(function () {
+			if (!/eruda=true/.test(window.location) && localStorage.getItem('active-eruda') != 'true') return;
+			var src = '//cdn.jsdelivr.net/npm/eruda';
+			document.write('<scr' + 'ipt src="' + src + '"></scr' + 'ipt>');
+			document.write('<scr' + 'ipt>eruda.init();</scr' + 'ipt>');
+		})();
+		
+		
 
 		document.body.addEventListener('touchmove', function (e) {
 			e.preventDefault(); 
 		}, {passive: false});
+
+		
 
 		var container, stats;
 		var loader;
@@ -182,12 +247,43 @@
 
 		var ready = false;
 
+		var capabilities;
+
 		init();
 
 		function init() {
 			showLoading();
+
+			if (!WEBGL.isWebGLAvailable()) {
+				var warning = WEBGL.getWebGLErrorMessage();
+				console.error(warning)
+				$('#progress-tip').text(warning);
+				
+				return;
+			}
+
 			container = document.createElement('div');
 			document.body.appendChild(container);
+
+			renderer = new THREE.WebGLRenderer({ antialias: true });
+			renderer.setPixelRatio(window.devicePixelRatio);
+			renderer.setSize(window.innerWidth, window.innerHeight);
+			container.appendChild(renderer.domElement);
+
+			capabilities = renderer.capabilities;
+			if(!capabilities.floatVertexTextures && capabilities.maxVertexUniforms < 1032){
+
+				$("#progress-bar-div").hide();
+				$('#loadingTip').append($(`<p>你的设备暂时无法支持，-_-! </p>`))
+				// Object.keys(capabilities).forEach( k => {
+				// 	var val = $.isFunction(capabilities[k])?capabilities[k]():capabilities[k];
+				// 	$('#loadingTip').append($(`<p>${k}:  ${val}</p>`))
+				// })
+
+				return;
+			}
+
+			
 
 			camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100000);
 			camera.position.z = 0;
@@ -233,10 +329,7 @@
 
 			//
 
-			renderer = new THREE.WebGLRenderer({ antialias: true });
-			renderer.setPixelRatio(window.devicePixelRatio);
-			renderer.setSize(window.innerWidth, window.innerHeight);
-			container.appendChild(renderer.domElement);
+			
 
 			//effect = new THREE.OutlineEffect(renderer);
 			//effect.enabled = false;
@@ -358,6 +451,8 @@
 			function onError(xhr) {
 			};
 
+			var roleModel = 'models/gumi/Gumi with green.pmx';
+
 			var modelFile = [
 				'frozen/pmx/01_dome.pmx',
 				'frozen/pmx/02_dummy.pmx',
@@ -372,7 +467,8 @@
 				//'models/Miku_lace_dress/TDA Miku Lace Dress Blue Ver2.0.pmx',
 				//'frozen/roles/TDA miku/Tda Hatsune Miku Magnet Good Physics.pmx',
 				//'frozen/roles/Elsa/Elsa.pmx',
-				'tda/tda.pmx',
+				'models/tda/tda.pmx',
+				//roleModel,
 				'frozen/pmx/11_stair.pmx'
 			];
 
@@ -726,7 +822,7 @@
 
 
 		function allPrepared() {
-			
+			//$('#progress-bar-div').hide();
 			$("#progress-tip").text("加载完成");
 			$("#start_btn").show();
 			

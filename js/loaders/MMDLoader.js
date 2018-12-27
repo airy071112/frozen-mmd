@@ -1718,8 +1718,6 @@ THREE.MMDLoader = ( function () {
 		 * @return {THREE.AnimationClip}
 		 */
 		buildMorphAnimation: function ( vmd, mesh ) {
-			console.warn(vmd);
-			console.warn(mesh);
 
 			mesh.morphWeights = mesh.morphWeights || {};
 			

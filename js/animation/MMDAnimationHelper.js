@@ -521,6 +521,7 @@ THREE.MMDAnimationHelper = ( function () {
 			objects.physics = this._createMMDPhysics( mesh, params );
 
 			if ( objects.mixer && params.animationWarmup !== false ) {
+
 				this._animateMesh( mesh, 0);
 				objects.physics.reset();
 			}
@@ -599,7 +600,7 @@ THREE.MMDAnimationHelper = ( function () {
 				}
 
 				if ( grantSolver && this.enabled.grant ) {
-
+					
 					grantSolver.update();
 
 				}
@@ -611,8 +612,6 @@ THREE.MMDAnimationHelper = ( function () {
 				if ( physics && this.configuration.resetPhysicsOnLoop ) {
 					
 					physics.reset();
-
-					physics.warmup( 60 );
 				
 				}
 				objects.looped = false;
@@ -621,7 +620,7 @@ THREE.MMDAnimationHelper = ( function () {
 
 			this.onBeforePhysics( mesh );
 
-			if ( physics && this.enabled.physics && ! this.sharedPhysics ) {
+			if ( physics && this.enabled.physics && ! this.sharedPhysics && delta > Number.EPSILON) {
 				
 				physics.update( delta );
 				
